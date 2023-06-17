@@ -25,7 +25,11 @@ import HomeScreen from './components/HomeScreen';
 import Header from './components/Header';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
-import { ClerkProvider, SignedIn, SignedOut } from "@clerk/clerk-react";
+// import { ClerkProvider, SignedIn, SignedOut } from "@clerk/clerk-react";
+import { Constants } from 'expo-constants';
+import { ClerkProvider, SignedIn, SignedOut } from "@clerk/clerk-expo";
+import SignInWithOAuth from "./components/SignInWithOAuth";
+import * as SecureStore from "expo-secure-store";
 import Config from 'react-native-config';
 
 console.log('REACT_APP_CLERK_PUBLISHABLE_KEY from Config:', Config);
@@ -36,32 +40,39 @@ console.log('REACT_APP_CLERK_PUBLISHABLE_KEY from dotenv:', process.env);
 // const clerkPubKey = Config.REACT_APP_CLERK_PUBLISHABLE_KEY
 const clerkPubKey = "pk_test_Y2FwaXRhbC1kb2UtNTEuY2xlcmsuYWNjb3VudHMuZGV2JA";
 
-function Section({children, title}) {
-  const isDarkMode = useColorScheme() === 'dark';
+const tokenCache = {
+  async getToken(key) {
+    try {
+      return SecureStore.getItemAsync(key);
+    } catch (err) {
+      return null;
+    }
+  },
+  async saveToken(key, value) {
+    try {
+      return SecureStore.setItemAsync(key, value);
+    } catch (err) {
+      return;
+    }
+  },
+};
+
+const SignOut = () => {
+  const { isLoaded,signOut } = useAuth();
+  if (!isLoaded) {
+    return null;
+  }
   return (
-    
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
+    <View>
+      <Button
+        title="Sign Out"
+        onPress={() => {
+          signOut();
+        }}
+      />
     </View>
   );
-}
+};
 
 function App() {
 
@@ -72,7 +83,9 @@ function App() {
   };
 
   return (
-    <ClerkProvider publishableKey={clerkPubKey}>
+    <ClerkProvider 
+      tokenCache={tokenCache}
+      publishableKey={clerkPubKey}>
       <SafeAreaProvider>
         <RootProvider>
           <GestureHandlerRootView>
@@ -87,10 +100,12 @@ function App() {
                 style={backgroundStyle}>
                   {/* <HomeScreen /> */}
                   <Text> You are singed in</Text>
+                  <SignOut/>
               </ScrollView>
               </SignedIn>
               <SignedOut>
                 <Text>You are signed out</Text>
+                <SignInWithOAuth />
               </SignedOut>
             </SafeAreaView>
           </GestureHandlerRootView>
